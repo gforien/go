@@ -16,7 +16,7 @@ type Version struct {
 
 var zero = &Version{0, 0, 0}
 
-var semver = regexp.MustCompile(`(\d+)\.(\d+)\.(\d+)`)
+var semver = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)`)
 
 // We expect exactly 3 matches to be found when parsing
 // a provided string with the semver regexp

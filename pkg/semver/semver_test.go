@@ -14,6 +14,10 @@ func TestFromString(t *testing.T) {
 			expected: Version{Major: 1, Minor: 2, Patch: 3},
 		},
 		{
+			given:    "v1.2.3",
+			expected: Version{Major: 1, Minor: 2, Patch: 3},
+		},
+		{
 			given:    "0.0.1",
 			expected: Version{Major: 0, Minor: 0, Patch: 1},
 		},
