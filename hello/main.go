@@ -96,7 +96,7 @@ var root = &cobra.Command{
 
 			for {
 				_, _ = fetch(u, opts...)
-				time.Sleep(5 * time.Second)
+				time.Sleep(10 * time.Second)
 			}
 		}
 
