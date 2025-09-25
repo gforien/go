@@ -93,8 +93,11 @@ var root = &cobra.Command{
 			if viper.GetBool("resolve") {
 				opts = append(opts, withResolve())
 			}
-			_, _ = fetch(u, opts...)
-			return nil
+
+			for {
+				_, _ = fetch(u, opts...)
+				time.Sleep(5 * time.Second)
+			}
 		}
 
 		if viper.GetBool("stdin") || (len(args) == 1 && args[0] == "-") {
