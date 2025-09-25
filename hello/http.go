@@ -51,7 +51,11 @@ func coreHeaders(next http.Handler) http.Handler {
 		if val := os.Getenv("POD_NAME"); val != "" {
 			w.Header().Set("X-Served-By", val)
 		}
-		envs := []string{"POD_IP", "CONTAINER_PORT", "SVC", "SVC_PORT", "CLUSTER_IP", "EXTERNAL_IP", "NODE_NAME"}
+		envs := []string{
+			"POD_NAME", "POD_IP",
+			"NODE_NAME", "NODE_IP",
+			"CONTAINER_PORT", "SVC", "SVC_PORT", "CLUSTER_IP", "EXTERNAL_IP",
+		}
 		for _, env := range envs {
 			if val := os.Getenv(env); val != "" {
 				w.Header().Set(toHeader(env), val)
@@ -67,7 +71,7 @@ func toHeader(s string) string {
 	for i := range words {
 		words[i] = strings.ToTitle(words[i])
 	}
-	words = append([]string{"X-"}, words...)
+	words = append([]string{"X"}, words...)
 	return strings.Join(words, "-")
 }
 
