@@ -14,12 +14,15 @@ import (
 func serve() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
-	http.Handle("/", loggingMiddleware(http.HandlerFunc(httpHandler)))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", httpHandler)
+
+	h := loggingMiddleware(mux)
 
 	addr := net.JoinHostPort(viper.GetString("host"), viper.GetString("http_port"))
 	slog.Info("Listening at " + addr)
 
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	if err := http.ListenAndServe(addr, h); err != nil {
 		panic(err)
 	}
 }
