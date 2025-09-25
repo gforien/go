@@ -13,4 +13,4 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-s -w
 FROM gcr.io/distroless/base-debian11
 WORKDIR /app
 COPY --from=builder /app/hello .
-CMD ["/app/hello", "--http"]
+CMD ["/app/hello", "--http", "--listen"]
