@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -67,11 +65,8 @@ var root = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if viper.GetBool("listen") {
 			if viper.GetBool("http") {
-				slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
-				http.Handle("/", loggingMiddleware(http.HandlerFunc(httpHandler)))
-				addr := net.JoinHostPort(viper.GetString("host"), viper.GetString("http_port"))
-				slog.Info("Listening at " + addr)
-				return http.ListenAndServe(addr, nil)
+				serve()
+				return nil
 			}
 		}
 

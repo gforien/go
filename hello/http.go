@@ -7,7 +7,22 @@ import (
 	"net/http/httputil"
 	"os"
 	"time"
+
+	"github.com/spf13/viper"
 )
+
+func serve() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
+	http.Handle("/", loggingMiddleware(http.HandlerFunc(httpHandler)))
+
+	addr := net.JoinHostPort(viper.GetString("host"), viper.GetString("http_port"))
+	slog.Info("Listening at " + addr)
+
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		panic(err)
+	}
+}
 
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
