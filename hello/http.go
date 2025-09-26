@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -16,7 +17,7 @@ func serve() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", httpHandler)
+	mux.Handle("/", HandlerWithError(httpHandler))
 
 	h := loggingMiddleware(coreHeaders(mux))
 
@@ -75,7 +76,18 @@ func toHeader(s string) string {
 	return strings.Join(words, "-")
 }
 
-func httpHandler(w http.ResponseWriter, r *http.Request) {
+type HandlerWithError func(w http.ResponseWriter, r *http.Request) error
+
+func (h HandlerWithError) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	err := h(w, r)
+	if err != nil {
+		// Centralized error handling
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		slog.Error("httpHandler error", "err", err, "method", r.Method, "path", r.URL.Path)
+	}
+}
+
+func httpHandler(w http.ResponseWriter, r *http.Request) error {
 	t0 := time.Now()
 	var res []byte
 	var err error
@@ -107,13 +119,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 
 	dump, err := httputil.DumpRequest(r, true)
 	if err != nil {
-		slog.Error("failed to dump request",
-			"error", err,
-			"method", r.Method,
-			"remote", r.RemoteAddr,
-		)
-		http.Error(w, "failed to dump request: ", http.StatusInternalServerError)
-		return
+		return fmt.Errorf("failed to dump request: %w", err)
 	}
 	res = append(res, dump...)
 	res = append(res, []byte(Footer(t0))...)
@@ -122,10 +128,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(res)
 	if err != nil {
-		slog.Error("failed to write response",
-			"error", err,
-			"method", r.Method,
-			"remote", r.RemoteAddr,
-		)
+		return fmt.Errorf("failed to write response: %w", err)
 	}
+	return nil
 }
