@@ -95,28 +95,6 @@ func httpHandler(w http.ResponseWriter, r *http.Request) error {
 	h, _ := os.Hostname()
 	res = append(res, []byte("Host: "+h+"\n")...)
 
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		res = append(res, []byte("IP:\n")...)
-		slog.Debug("failed to retrieve local IP address",
-			"error", err,
-			"method", r.Method,
-			"remote", r.RemoteAddr,
-		)
-	} else {
-		defer func() {
-			if err := conn.Close(); err != nil {
-				slog.Debug("failed to close UDP socket",
-					"error", err,
-					"method", r.Method,
-					"remote", r.RemoteAddr,
-				)
-			}
-		}()
-		localAddr := conn.LocalAddr().(*net.UDPAddr)
-		res = append(res, []byte("IP: "+localAddr.IP.String()+"\n")...)
-	}
-
 	dump, err := httputil.DumpRequest(r, true)
 	if err != nil {
 		return fmt.Errorf("failed to dump request: %w", err)
@@ -131,4 +109,19 @@ func httpHandler(w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("failed to write response: %w", err)
 	}
 	return nil
+}
+
+//nolint:unused
+func getPreferredOutboundIP() (net.IP, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial UDP 8.8.8.8:80: %w", err)
+	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			panic(fmt.Errorf("failed to close UDP connection: %w", err))
+		}
+	}()
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP, nil
 }
