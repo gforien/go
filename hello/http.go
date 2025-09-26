@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"os"
 	"strings"
 	"time"
@@ -88,24 +87,11 @@ func (h HandlerWithError) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func httpHandler(w http.ResponseWriter, r *http.Request) error {
-	t0 := time.Now()
-	var res []byte
 	var err error
-
-	h, _ := os.Hostname()
-	res = append(res, []byte("Host: "+h+"\n")...)
-
-	dump, err := httputil.DumpRequest(r, true)
-	if err != nil {
-		return fmt.Errorf("failed to dump request: %w", err)
-	}
-	res = append(res, dump...)
-	res = append(res, []byte(Footer(t0))...)
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	_, err = w.Write(res)
-	if err != nil {
+	if _, err = w.Write([]byte("OK")); err != nil {
 		return fmt.Errorf("failed to write response: %w", err)
 	}
 	return nil
