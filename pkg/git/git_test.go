@@ -12,24 +12,53 @@ import (
 )
 
 func TestGetVersion(t *testing.T) {
-	tests := []struct {
-		name     string
-		given    []string
-		expected semver.Version
-	}{
+	type testCase struct {
+		name      string
+		given     []string
+		prefix    string
+		expected  semver.Version
+		expectRef bool // whether we expect a non-nil reference
+	}
+
+	tests := []testCase{
 		{
-			given:    []string{"1.0.0", "2.0.0", "1.2.0"},
-			expected: semver.Version{Major: 2, Minor: 0, Patch: 0},
+			name:      "simple tags",
+			given:     []string{"1.0.0", "2.0.0", "1.2.0"},
+			expected:  semver.Version{Major: 2, Minor: 0, Patch: 0},
+			expectRef: true,
 		},
 		{
-			name:     "0.17.0 should be >= 0.9.0",
-			given:    []string{"0.1.0", "0.9.0", "0.17.0"},
-			expected: semver.Version{Major: 0, Minor: 17, Patch: 0},
+			name:      "0.17.0 should be >= 0.9.0",
+			given:     []string{"0.1.0", "0.9.0", "0.17.0"},
+			expected:  semver.Version{Major: 0, Minor: 17, Patch: 0},
+			expectRef: true,
 		},
 		{
-			name:     "No Tags",
-			given:    []string{},
-			expected: semver.Version{Major: 0, Minor: 0, Patch: 0},
+			name:      "No Tags",
+			given:     []string{},
+			expected:  semver.Version{Major: 0, Minor: 0, Patch: 0},
+			expectRef: false,
+		},
+		{
+			name:      "simple monorepo tag",
+			given:     []string{"module/v1.0.0", "module/v1.2.0", "other/v2.0.0"},
+			prefix:    "module/",
+			expected:  semver.Version{Major: 1, Minor: 2, Patch: 0},
+			expectRef: true,
+		},
+		{
+			name:      "many monorepo tags",
+			given:     []string{"v0.1.0", "v0.2.0", "my/module/v1.0.0", "my/module/v1.2.0", "other/v2.0.0"},
+			prefix:    "my/module/",
+			expected:  semver.Version{Major: 1, Minor: 2, Patch: 0},
+			expectRef: true,
+		},
+		{
+			name:      "Prefix with no matching tags",
+			given:     []string{"other/v1.0.0", "other/v1.2.0"},
+			prefix:    "my/module/",
+			expected:  semver.Version{Major: 0, Minor: 0, Patch: 0},
+			expectRef: false,
 		},
 	}
 
@@ -59,12 +88,19 @@ func TestGetVersion(t *testing.T) {
 				}
 			}
 
-			_, v, err := GetVersion(repo)
+			ref, v, err := GetVersion(repo, tt.prefix)
 			if err != nil {
 				t.Errorf("expected no error, got %#v", err)
 			}
+
 			if !tt.expected.Equals(v) {
 				t.Errorf("expected %#v, got %#v", tt.expected, v)
+			}
+			if tt.expectRef && ref == nil {
+				t.Errorf("expected a reference, got nil")
+			}
+			if !tt.expectRef && ref != nil {
+				t.Errorf("expected no reference, got %#v", ref)
 			}
 		})
 	}

@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gforien/go/pkg/semver"
 	"github.com/go-git/go-git/v5"
@@ -9,7 +10,9 @@ import (
 )
 
 // GetVersion returns the latest semver tag in a repo
-func GetVersion(repo *git.Repository) (*plumbing.Reference, *semver.Version, error) {
+// By default, prefix = ""
+// In a monorepo, you might want to set prefix = "my/module/"
+func GetVersion(repo *git.Repository, prefix string) (*plumbing.Reference, *semver.Version, error) {
 	tags, err := repo.Tags()
 	if err != nil {
 		return nil, nil, fmt.Errorf("error fetching tags: %w", err)
@@ -18,13 +21,17 @@ func GetVersion(repo *git.Repository) (*plumbing.Reference, *semver.Version, err
 	var latestRef *plumbing.Reference
 	var latestTag, t semver.Version
 
-	if err = tags.ForEach(func(ref *plumbing.Reference) error {
-		if t, err = semver.FromString(ref.Name().Short()); err != nil {
+	if err = tags.ForEach(func(tagPrefixed *plumbing.Reference) error {
+		if !strings.HasPrefix(tagPrefixed.Name().Short(), prefix) {
+			return nil
+		}
+		tag := strings.TrimPrefix(tagPrefixed.Name().Short(), prefix)
+		if t, err = semver.FromString(tag); err != nil {
 			return nil
 		}
 		if t.GreaterThan(&latestTag) {
 			latestTag = t
-			latestRef = ref
+			latestRef = tagPrefixed
 		}
 		return nil
 	}); err != nil {
