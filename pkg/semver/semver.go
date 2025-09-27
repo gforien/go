@@ -93,6 +93,23 @@ func (s *Version) NextPatch() *Version {
 	}
 }
 
+func (s *Version) Bump(b Bump) *Version {
+	if s == nil {
+		return &One
+	}
+
+	switch b {
+	case Major:
+		return s.NextMajor()
+	case Minor:
+		return s.NextMinor()
+	case Patch:
+		return s.NextPatch()
+	default:
+		panic(&InvalidBumpError{string(b)})
+	}
+}
+
 // Compare returns
 // -1 if the version is less than the other version,
 // 0 if they are equal,
