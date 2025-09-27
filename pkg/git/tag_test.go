@@ -1,11 +1,13 @@
 package git
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/gforien/go/pkg/semver"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 )
 
@@ -63,6 +65,112 @@ func TestGetVersion(t *testing.T) {
 			}
 			if !tt.expected.Equals(v) {
 				t.Errorf("expected %#v, got %#v", tt.expected, v)
+			}
+		})
+	}
+}
+
+func TestEnsureCommitSince(t *testing.T) {
+	type CommitMsg struct {
+		commitMsg string
+		tagMsg    string // empty if no tag
+	}
+	tests := []struct {
+		name               string
+		givenTag           string
+		commitTagMsgs      []CommitMsg
+		expectErrRefIsHead bool // expect ErrRefIsHead
+		expectAnyErr       bool // expect any error
+	}{
+		{
+			name:     "HEAD equals tag",
+			givenTag: "tag1",
+			commitTagMsgs: []CommitMsg{
+				{"commit1", "tag1"},
+			},
+			expectErrRefIsHead: true,
+		},
+		{
+			name:     "one new commit after tag",
+			givenTag: "tag1",
+			commitTagMsgs: []CommitMsg{
+				{"commit1", "tag1"},
+				{"commit2", ""},
+			},
+		},
+		{
+			name:     "several commits and tags",
+			givenTag: "tag2",
+			commitTagMsgs: []CommitMsg{
+				{"c1", "tag1"},
+				{"c2", ""},
+				{"c3", "tag2"},
+				{"c4", ""},
+				{"c5", ""},
+			},
+		},
+		{
+			name:     "nonexistent tag",
+			givenTag: "nonexistent",
+			commitTagMsgs: []CommitMsg{
+				{"c1", "tag1"},
+				{"c2", ""},
+			},
+			expectAnyErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			repo, err := git.Init(memory.NewStorage(), memfs.New())
+			if err != nil {
+				t.Fatalf("failed to init repo: %v", err)
+			}
+			wt, err := repo.Worktree()
+			if err != nil {
+				t.Fatalf("failed to get worktree: %v", err)
+			}
+
+			tagRefs := map[string]*plumbing.Reference{}
+			for _, ct := range tt.commitTagMsgs {
+				h, err := wt.Commit(ct.commitMsg, &git.CommitOptions{AllowEmptyCommits: true})
+				if err != nil {
+					t.Fatalf("failed to commit: %v", err)
+				}
+				if ct.tagMsg != "" {
+					ref, err := repo.CreateTag(ct.tagMsg, h, nil)
+					if err != nil {
+						t.Fatalf("failed to create tag %s: %v", ct.tagMsg, err)
+					}
+					tagRefs[ct.tagMsg] = ref
+				}
+			}
+
+			ref, ok := tagRefs[tt.givenTag]
+			if !ok {
+				// simulate missing tag reference
+				ref = &plumbing.Reference{}
+			}
+
+			got := EnsureCommitSince(repo, ref)
+
+			switch {
+			case tt.expectErrRefIsHead:
+				var noNew ErrRefIsHead
+				if !errors.As(got, &noNew) {
+					t.Errorf("expected ErrNoNewCommit, got %v", got)
+				}
+			case tt.expectAnyErr:
+				if got == nil {
+					t.Errorf("expected an error, got nil")
+				}
+			default:
+				if got != nil {
+					t.Errorf("unexpected error: %v", got)
+				}
 			}
 		})
 	}
