@@ -57,12 +57,12 @@ func TestGetVersion(t *testing.T) {
 				}
 			}
 
-			val, err := GetVersion(repo)
+			_, v, err := GetVersion(repo)
 			if err != nil {
 				t.Errorf("expected no error, got %#v", err)
 			}
-			if !tt.expected.Equals(val) {
-				t.Errorf("expected %#v, got %#v", tt.expected, val)
+			if !tt.expected.Equals(v) {
+				t.Errorf("expected %#v, got %#v", tt.expected, v)
 			}
 		})
 	}
