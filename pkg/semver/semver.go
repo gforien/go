@@ -16,7 +16,7 @@ type Version struct {
 
 var (
 	zero = &Version{0, 0, 0}
-	One  = &Version{0, 1, 0} // v0.1.0
+	One  = Version{0, 1, 0} // v0.1.0
 )
 
 var semver = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)`)
